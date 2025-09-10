@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 漫畫生成器 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+        }
+        .comic-panel {
+            border: 2px solid #444;
+            background-color: #2a2a2a;
+        }
+        /* 簡單的載入動畫 */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23cccccc%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: .8em;
+            padding-right: 2.5rem;
+        }
+        #image-preview-container {
+            position: relative;
+        }
+        #remove-image-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        #remove-image-btn:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">AI 漫畫生成器 Pro</h1>
+            <p class="text-lg text-gray-400">輸入詳細設定，讓 AI 為你創作出更貼近想像的四格漫畫！</p>
+        </header>
+
+        <main>
+            <!-- 輸入區塊 -->
+            <div class="bg-gray-800 p-6 rounded-2xl shadow-lg mb-8 space-y-4">
+                
+                <!-- 新增：圖片上傳區塊 -->
+                <div>
+                    <label for="image-upload" class="block text-xl font-semibold mb-2 text-gray-200">上傳角色參考圖 (選填)：</label>
+                    <div id="image-upload-area" class="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <div class="flex text-sm text-gray-400">
+                                <label for="image-upload-input" class="relative cursor-pointer bg-gray-700 rounded-md font-medium text-blue-400 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-800 focus-within:ring-blue-500 px-2">
+                                    <span>選擇檔案</span>
+                                    <input id="image-upload-input" name="image-upload" type="file" class="sr-only" accept="image/*">
+                                </label>
+                                <p class="pl-1">或拖曳檔案到此</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+                     <div id="image-preview-container" class="mt-4 hidden">
+                        <img id="image-preview" src="#" alt="圖片預覽" class="max-h-48 rounded-lg mx-auto">
+                        <button id="remove-image-btn" title="移除圖片">✕</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="character-description" class="block text-xl font-semibold mb-2 text-gray-200">角色設定：</label>
+                    <textarea id="character-description" class="w-full h-24 p-4 bg-gray-700 text-white rounded-lg border-2 border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-300" placeholder="例如：一位有著銀色短髮、右眼下方有淚痣、穿著藍色連帽衫的17歲男孩，個性有點慵懶..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="setting-description" class="block text-xl font-semibold mb-2 text-gray-200">場景設定：</label>
+                        <textarea id="setting-description" class="w-full h-24 p-4 bg-gray-700 text-white rounded-lg border-2 border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-300" placeholder="例如：在一個堆滿古書和藥水瓶的魔法塔工作室裡..."></textarea>
+                    </div>
+                     <div>
+                        <label for="manga-style" class="block text-xl font-semibold mb-2 text-gray-200">漫畫風格：</label>
+                        <select id="manga-style" class="w-full h-24 p-4 bg-gray-700 text-white rounded-lg border-2 border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-300">
+                            <option value="4-koma manga style, monochrome, simple background">經典黑白四格</option>
+                            <option value="dynamic shonen manga style, action lines, monochrome">熱血少年漫畫</option>
+                            <option value="soft shojo manga style, sparkling effects, monochrome">溫馨少女漫畫</option>
+                            <option value="vibrant color, picture book style, cute">彩色繪本風格</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="story-idea" class="block text-xl font-semibold mb-2 text-gray-200">故事核心 (請用中文輸入)：</label>
+                    <textarea id="story-idea" class="w-full h-24 p-4 bg-gray-700 text-white rounded-lg border-2 border-gray-600 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 transition duration-300" placeholder="例如：一個健忘的魔法師，總是把治療藥水和爆炸藥水搞混..."></textarea>
+                </div>
+
+                <button id="generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300 transform hover:scale-105 shadow-lg">
+                    ✨ 開始生成漫畫
+                </button>
+            </div>
+
+            <!-- 處理中狀態 -->
+            <div id="loading-section" class="text-center py-10 hidden">
+                <div class="loader mx-auto mb-4"></div>
+                <p id="loading-status" class="text-lg text-gray-300">正在處理中，請稍候...</p>
+                <div class="mt-4 text-sm text-gray-500">
+                    <p>這可能需要 1-2 分鐘，具體時間取決於 AI 的回應速度。</p>
+                    <p>流程：生成劇本 -> 生成分鏡圖片 (x4) -> 合成漫畫</p>
+                </div>
+            </div>
+
+            <!-- 結果顯示區塊 -->
+            <div id="result-section" class="hidden">
+                 <h2 class="text-2xl font-bold text-center mb-6">生成結果</h2>
+                <div class="bg-gray-800 p-4 rounded-2xl shadow-lg">
+                    <img id="manga-output" src="" alt="生成的漫畫" class="w-full h-auto rounded-lg mx-auto shadow-md border-2 border-gray-600">
+                </div>
+                 <div class="mt-6 text-center">
+                    <a id="download-btn" href="#" download="ai_manga.png" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                        下載漫畫
+                    </a>
+                </div>
+            </div>
+             <!-- 錯誤訊息 -->
+            <div id="error-message" class="hidden text-center bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg mt-6">
+                <strong class="font-bold">發生錯誤！</strong>
+                <span class="block sm:inline" id="error-text"></span>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // === 常數與 DOM 元素獲取 ===
+        const generateBtn = document.getElementById('generate-btn');
+        const storyIdeaInput = document.getElementById('story-idea');
+        const characterInput = document.getElementById('character-description');
+        const settingInput = document.getElementById('setting-description');
+        const styleInput = document.getElementById('manga-style');
+        
+        // 新增: 圖片上傳相關元素
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const imageUploadArea = document.getElementById('image-upload-area');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+        let uploadedImageBase64 = null; // 用於儲存圖片的 Base64 資料
+
+        const loadingSection = document.getElementById('loading-section');
+        const loadingStatus = document.getElementById('loading-status');
+        const resultSection = document.getElementById('result-section');
+        const mangaOutput = document.getElementById('manga-output');
+        const downloadBtn = document.getElementById('download-btn');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        
+        // === 圖片上傳處理邏輯 ===
+        imageUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        // 處理拖曳上傳
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            imageUploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        imageUploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }, false);
+
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImageBase64 = e.target.result;
+                imagePreview.src = uploadedImageBase64;
+                imagePreviewContainer.classList.remove('hidden');
+                imageUploadArea.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        removeImageBtn.addEventListener('click', () => {
+            uploadedImageBase64 = null;
+            imagePreview.src = '#';
+            imageUploadInput.value = ''; // 清空 file input
+            imagePreviewContainer.classList.add('hidden');
+            imageUploadArea.classList.remove('hidden');
+        });
+
+
+        // === 1. 主要的觸發函式 ===
+        generateBtn.addEventListener('click', async () => {
+            const storyIdea = storyIdeaInput.value.trim();
+            const character = characterInput.value.trim();
+            const setting = settingInput.value.trim();
+            const style = styleInput.value;
+
+            if (!storyIdea || !character || !setting) {
+                showError("請填寫「角色設定」、「場景設定」和「故事核心」！");
+                return;
+            }
+
+            // 重置使用者介面
+            hideError();
+            resultSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                updateStatus("正在呼叫後端服務...");
+                
+                // **修改:** 呼叫我們自己的後端 /api/generate
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        storyIdea,
+                        character,
+                        setting,
+                        style,
+                        uploadedImageBase64
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '後端服務發生未知錯誤');
+                }
+
+                const { script, panelImages } = await response.json();
+
+                // 步驟三: 合成最終漫畫
+                updateStatus("正在合成最終的漫畫頁面...");
+                const finalMangaUrl = await composeManga(script, panelImages);
+                
+                // 顯示結果
+                mangaOutput.src = finalMangaUrl;
+                downloadBtn.href = finalMangaUrl;
+                resultSection.classList.remove('hidden');
+
+            } catch (error) {
+                // **修正:** 捕捉在本機預覽時因相對路徑造成的 URL 解析錯誤
+                if (error instanceof TypeError && error.message.includes('Failed to parse URL')) {
+                     showError("預覽模式錯誤：此為前後端分離架構，無法在目前的本機預覽環境中呼叫後端 API。這屬於正常現象，請依照指示將專案部署至 Vercel 進行完整測試。");
+                } else {
+                    console.error('完整錯誤資訊:', error);
+                    showError(`處理過程中發生錯誤: ${error.message}`);
+                }
+            } finally {
+                // 無論成功或失敗都恢復 UI
+                loadingSection.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+        
+        // === 2. 漫畫合成 (使用 Canvas) ===
+        // (此部分邏輯不變，因為合成工作仍在前端完成)
+        async function composeManga(script, imageSources) {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const panelWidth = 512;
+                const panelHeight = 512;
+                const gap = 20; // 格子間的間距
+                
+                canvas.width = panelWidth + (gap * 2);
+                canvas.height = (panelHeight * 4) + (gap * 5);
+                
+                // 填充背景色
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                let imagesLoaded = 0;
+                const panelImages = [];
+
+                imageSources.forEach((src, index) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        panelImages[index] = img;
+                        imagesLoaded++;
+                        if (imagesLoaded === imageSources.length) {
+                            drawManga();
+                            resolve(canvas.toDataURL('image/png'));
+                        }
+                    };
+                    img.onerror = () => reject(new Error(`無法載入第 ${index + 1} 張圖片`));
+                    img.src = src;
+                });
+                
+                function drawManga() {
+                    script.panels.forEach((panel, i) => {
+                        const x = gap;
+                        const y = gap + i * (panelHeight + gap);
+                        
+                        // 繪製邊框
+                        ctx.fillStyle = '#444';
+                        ctx.fillRect(x - 2, y - 2, panelWidth + 4, panelHeight + 4);
+
+                        // 繪製圖片
+                        if (panelImages[i]) {
+                             ctx.drawImage(panelImages[i], x, y, panelWidth, panelHeight);
+                        }
+                       
+                        // 繪製對白
+                        if (panel.dialogue) {
+                            drawDialogue(ctx, panel.dialogue, x, y, panelWidth, panelHeight);
+                        }
+                    });
+                }
+            });
+        }
+
+        // === 3. 繪製對話框和文字的輔助函式 ===
+        function drawDialogue(ctx, text, panelX, panelY, panelW, panelH) {
+            ctx.font = 'bold 22px "Noto Sans TC"';
+            ctx.fillStyle = 'black';
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 4;
+
+            const padding = 15;
+            const lines = wrapText(ctx, text, panelW - padding * 2);
+            const textHeight = lines.length * 28;
+            
+            // 對話框位置 (簡易放在底部)
+            const boxY = panelY + panelH - textHeight - padding * 2.5;
+            const boxX = panelX + padding;
+            const boxW = panelW - padding * 2;
+            const boxH = textHeight + padding;
+            
+            // 繪製對話框背景
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(boxX, boxY, boxW, boxH);
+            ctx.globalAlpha = 1.0;
+            
+            // 繪製文字
+            ctx.fillStyle = 'black';
+            lines.forEach((line, i) => {
+                const textX = boxX + (boxW - ctx.measureText(line).width) / 2; // 文字置中
+                const textY = boxY + 28 + i * 28;
+                ctx.strokeText(line, textX, textY); // 先描繪文字邊框
+                ctx.fillText(line, textX, textY);   // 再填滿文字顏色
+            });
+        }
+
+        function wrapText(context, text, maxWidth) {
+            const words = text.split('');
+            const lines = [];
+            let currentLine = words[0] || '';
+
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = context.measureText(currentLine + word).width;
+                if (width < maxWidth) {
+                    currentLine += word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+
+        // === UI 輔助函式 ===
+        function updateStatus(message) {
+            loadingStatus.textContent = message;
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+
+    </script>
+</body>
+</html>
+

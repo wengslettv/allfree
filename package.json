@@ -1,0 +1,19 @@
+{
+  "name": "ai-manga-backend",
+  "version": "1.0.0",
+  "description": "後端服務，用於處理 AI 漫畫生成請求",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.11.1"
+  }
+}
+```
+
+完成後，您的專案資料夾看起來就會是正確的結構了：
+
